@@ -35,6 +35,7 @@ export function copyToClipboard(text: string): void {
   const args = process.platform === "linux" ? ["-selection", "clipboard"] : [];
   try {
     const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", () => {});
     child.stdin.end(text);
   } catch {
     // tray sem clipboard não é fatal — o token também está no config.json

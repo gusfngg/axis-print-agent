@@ -5,6 +5,13 @@ import { buildServer } from "./server";
 import { logger } from "./logger";
 import { FakePrinterDriver, type PrinterDriver } from "./printer-driver";
 
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason instanceof Error ? reason.message : String(reason) }, "unhandledRejection");
+});
+process.on("uncaughtException", (err) => {
+  logger.error({ err: err.message }, "uncaughtException");
+});
+
 async function main(): Promise<void> {
   const useFake = process.argv.includes("--fake");
   const noTray = process.argv.includes("--no-tray");
@@ -22,15 +29,24 @@ async function main(): Promise<void> {
   await app.listen({ host: BIND_HOST, port: PORT });
   logger.info({ host: BIND_HOST, port: PORT, fake: useFake }, "agent listening");
 
+  let printerOnline = false;
+  try {
+    printerOnline = await printer.isConnected();
+  } catch {
+    printerOnline = false;
+  }
+
   if (!noTray) {
     const { startTray } = await import("./tray.js");
     await startTray(
-      () => ({ running: true, printerOnline: true }),
+      () => ({ running: true, printerOnline }),
       config.token,
       () => {
         const url = `http://${BIND_HOST}:${PORT}/health`;
         const opener = process.platform === "win32" ? "explorer" : process.platform === "darwin" ? "open" : "xdg-open";
-        spawn(opener, [url], { stdio: "ignore", detached: true });
+        const child = spawn(opener, [url], { stdio: "ignore", detached: true });
+        child.on("error", () => {});
+        child.unref();
       },
     ).catch((err: unknown) => logger.error({ err: (err as Error).message }, "tray failed (continuando headless)"));
   }
