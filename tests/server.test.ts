@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/server";
 import { FakePrinterDriver } from "../src/printer-driver";
+import { RATE_LIMIT_MAX } from "../src/constants";
 import type { AgentConfig } from "../src/config";
 
 const TOKEN = "b".repeat(64);
@@ -68,5 +69,25 @@ describe("buildServer (stack completa)", () => {
       payload: `{"receipt":"${big}"}`,
     });
     expect(res.statusCode).toBe(413);
+  });
+
+  it("429 apos estourar o rate limit", async () => {
+    let last = 0;
+    for (let i = 0; i < RATE_LIMIT_MAX + 1; i++) {
+      last = (await app.inject({ method: "GET", url: "/health", headers: { host: HOST } })).statusCode;
+    }
+    expect(last).toBe(429);
+  });
+
+  it("/printers exige Bearer", async () => {
+    const noAuth = await app.inject({ method: "GET", url: "/printers", headers: { host: HOST, origin: ORIGIN } });
+    expect(noAuth.statusCode).toBe(401);
+    const withAuth = await app.inject({ method: "GET", url: "/printers", headers: { host: HOST, origin: ORIGIN, authorization: `Bearer ${TOKEN}` } });
+    expect(withAuth.statusCode).toBe(200);
+  });
+
+  it("403 para Origin nao permitida (antes do auth)", async () => {
+    const res = await app.inject({ method: "POST", url: "/print", headers: { host: HOST, origin: "http://evil.com", authorization: `Bearer ${TOKEN}` }, payload: { receipt: {} } });
+    expect(res.statusCode).toBe(403);
   });
 });

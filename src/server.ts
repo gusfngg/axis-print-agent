@@ -19,9 +19,13 @@ export function buildServer(deps: { config: AgentConfig; printer: PrinterDriver 
   app.register(rateLimit, { max: RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW });
 
   const requireAuth = makeRequireAuth(() => deps.config.token);
-  registerHealthRoute(app, { printer: deps.printer, printerName: deps.config.printerName });
-  registerPrintersRoute(app, { printer: deps.printer, requireAuth });
-  registerPrintRoute(app, { printer: deps.printer, requireAuth });
+  // Rotas em app.after(): DEPOIS do load do rate-limit, senao o hook global do
+  // plugin nao se aplica a rotas registradas no mesmo tick (escapam do limite).
+  app.after(() => {
+    registerHealthRoute(app, { printer: deps.printer, printerName: deps.config.printerName });
+    registerPrintersRoute(app, { printer: deps.printer, requireAuth });
+    registerPrintRoute(app, { printer: deps.printer, requireAuth });
+  });
 
   return app;
 }
