@@ -1,0 +1,11 @@
+{
+  "pkg": {
+    "assets": [
+      "node_modules/@thiagoelg/node-printer/lib/**/*.node",
+      "node_modules/@thiagoelg/node-printer/build/**/*",
+      "node_modules/systray2/traybin/**/*"
+    ],
+    "targets": ["node20-win-x64"],
+    "outputPath": "dist"
+  }
+}
