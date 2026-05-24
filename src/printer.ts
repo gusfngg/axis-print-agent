@@ -3,6 +3,7 @@ import type { PrinterDriver } from "./printer-driver";
 import type { AgentConfig } from "./config";
 import type { ReceiptDto } from "./receipt-dto";
 import { buildReceiptOps, type ReceiptOp } from "./receipt-layout";
+import { logger } from "./logger";
 
 // Lazy-require do nativo: importar este arquivo NÃO deve carregar o binário.
 function nativeDriver(): any {
@@ -48,7 +49,8 @@ export class NodeThermalPrinterDriver implements PrinterDriver {
   async isConnected(): Promise<boolean> {
     try {
       return await this.make().isPrinterConnected();
-    } catch {
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, "printer.isConnected failed");
       return false;
     }
   }
@@ -57,7 +59,8 @@ export class NodeThermalPrinterDriver implements PrinterDriver {
     try {
       const printers = nativeDriver().getPrinters() as Array<{ name: string }>;
       return printers.map((x) => x.name);
-    } catch {
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, "printer.listPrinters failed");
       return [];
     }
   }
