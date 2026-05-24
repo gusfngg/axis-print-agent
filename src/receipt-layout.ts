@@ -21,7 +21,10 @@ const PAYMENT_LABELS: Record<ReceiptDto["payment"]["method"], string> = {
 };
 
 function money(n: number): string {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  // toLocaleString insere NBSP (U+00A0) entre "R$" e os digitos; troca por espaco
+  // comum (NBSP vira glifo lixo / desalinha colunas no codepage nao-UTF da termica).
+  const nbsp = String.fromCharCode(0xa0);
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).split(nbsp).join(" ");
 }
 
 function qty(n: number): string {
