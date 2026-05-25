@@ -29,10 +29,23 @@ declare module "systray2" {
     copyDir?: boolean | string;
   }
 
+  interface UpdateMenuAction {
+    type: "update-menu";
+    menu: {
+      icon: string;
+      title: string;
+      tooltip: string;
+      items: SysTrayMenuItem[];
+    };
+    seq_id: -1;
+  }
+
   export default class SysTray {
     constructor(conf: SysTrayConf);
     ready(): Promise<void>;
     onClick(listener: (action: { seq_id: number }) => void): Promise<this>;
+    /** Atualiza o tray em runtime (título/itens/ícone). Validado no Windows. */
+    sendAction(action: UpdateMenuAction): Promise<this>;
     kill(exitNode?: boolean): Promise<void>;
   }
 }

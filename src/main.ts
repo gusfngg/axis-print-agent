@@ -43,12 +43,23 @@ async function main(): Promise<void> {
   }
   logger.info({ host: BIND_HOST, port: PORT, fake: useFake }, "agent listening");
 
+  // Status da impressora consultado ao vivo: lido no boot e refrescado a cada 30s.
+  // O closure passado ao tray lê esta var por referência, então o título reflete o estado atual.
   let printerOnline = false;
-  try {
-    printerOnline = await printer.isConnected();
-  } catch {
-    printerOnline = false;
-  }
+  const refreshPrinterStatus = async (): Promise<void> => {
+    try {
+      printerOnline = await printer.isConnected();
+    } catch {
+      printerOnline = false;
+    }
+  };
+  await refreshPrinterStatus();
+
+  const POLL_MS = 30_000;
+  const poll = setInterval(() => {
+    void refreshPrinterStatus();
+  }, POLL_MS);
+  poll.unref();
 
   if (!noTray) {
     const { startTray } = await import("./tray.js");
