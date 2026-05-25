@@ -10,7 +10,7 @@ import { registerConfigRoute } from "./routes/config";
 import type { PrinterDriver } from "./printer-driver";
 import type { AgentConfig } from "./config";
 
-export function buildServer(deps: { config: AgentConfig; printer: PrinterDriver }): FastifyInstance {
+export function buildServer(deps: { config: AgentConfig; printer: PrinterDriver; configError?: boolean }): FastifyInstance {
   const app = Fastify({ bodyLimit: MAX_BODY_BYTES, logger: false });
 
   // Camada 2: origin/host/CORS/PNA antes de tudo.
@@ -23,7 +23,7 @@ export function buildServer(deps: { config: AgentConfig; printer: PrinterDriver 
   // Rotas em app.after(): DEPOIS do load do rate-limit, senao o hook global do
   // plugin nao se aplica a rotas registradas no mesmo tick (escapam do limite).
   app.after(() => {
-    registerHealthRoute(app, { printer: deps.printer, printerName: deps.config.printerName });
+    registerHealthRoute(app, { printer: deps.printer, printerName: deps.config.printerName, configError: deps.configError });
     registerPrintersRoute(app, { printer: deps.printer, requireAuth });
     registerPrintRoute(app, { printer: deps.printer, requireAuth });
     registerConfigRoute(app, { config: deps.config, requireAuth });

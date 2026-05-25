@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { BIND_HOST, PORT } from "./constants";
-import { loadOrInitConfig } from "./config";
+import { loadOrInitConfig, wasConfigSelfHealed } from "./config";
 import { buildServer } from "./server";
 import { logger } from "./logger";
 import { FakePrinterDriver, type PrinterDriver } from "./printer-driver";
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     printer = new NodeThermalPrinterDriver(config);
   }
 
-  const app = buildServer({ config, printer });
+  const app = buildServer({ config, printer, configError: wasConfigSelfHealed() });
   try {
     await app.listen({ host: BIND_HOST, port: PORT });
   } catch (err) {

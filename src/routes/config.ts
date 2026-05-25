@@ -19,8 +19,14 @@ export function registerConfigRoute(
   app.post("/config", { preHandler: deps.requireAuth }, async (req, reply) => {
     const parsed = ConfigPatch.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ ok: false, error: "INVALID_PAYLOAD" });
+    const previous = deps.config.printerName;
     deps.config.printerName = parsed.data.printerName;
-    saveConfig(deps.config);
+    try {
+      saveConfig(deps.config);
+    } catch {
+      deps.config.printerName = previous; // revert — mantem memoria consistente com disco
+      return reply.code(503).send({ ok: false, error: "PERSIST_FAILED" });
+    }
     return { ok: true, printerName: deps.config.printerName };
   });
 }

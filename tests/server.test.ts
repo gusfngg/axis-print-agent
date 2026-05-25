@@ -97,4 +97,16 @@ describe("buildServer (stack completa)", () => {
     expect(typeof body.version).toBe("string");
     expect(typeof body.build).toBe("string"); // "dev" em teste
   });
+
+  it("/health SEM configError por padrao (sem flag)", async () => {
+    const res = await app.inject({ method: "GET", url: "/health", headers: { host: HOST } });
+    expect(res.json()).not.toHaveProperty("configError");
+  });
+
+  it("/health reporta configError:true quando o flag e passado", async () => {
+    const healed = buildServer({ config: cfg, printer: new FakePrinterDriver(), configError: true });
+    await healed.ready();
+    const res = await healed.inject({ method: "GET", url: "/health", headers: { host: HOST } });
+    expect(res.json().configError).toBe(true);
+  });
 });

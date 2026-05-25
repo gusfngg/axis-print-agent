@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { loadOrInitConfig, saveConfig } from "../src/config";
+import { loadOrInitConfig, saveConfig, wasConfigSelfHealed } from "../src/config";
 
 let dir: string;
 beforeEach(() => {
@@ -32,5 +32,18 @@ describe("config self-heal", () => {
     const cfg = loadOrInitConfig();
     saveConfig({ ...cfg, printerName: "EPSON-TM-T20" });
     expect(loadOrInitConfig().printerName).toBe("EPSON-TM-T20");
+  });
+
+  it("wasConfigSelfHealed() = true apos carregar config corrompido", () => {
+    fs.writeFileSync(path.join(dir, "config.json"), "{ isso nao e json valido");
+    loadOrInitConfig();
+    expect(wasConfigSelfHealed()).toBe(true);
+  });
+
+  it("wasConfigSelfHealed() = false apos carregar config valido", () => {
+    const cfg = loadOrInitConfig(); // primeiro load gera seed valido
+    saveConfig(cfg);
+    loadOrInitConfig(); // reload do config valido
+    expect(wasConfigSelfHealed()).toBe(false);
   });
 });

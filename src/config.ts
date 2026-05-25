@@ -18,6 +18,11 @@ export const ConfigSchema = z.object({
 });
 export type AgentConfig = z.infer<typeof ConfigSchema>;
 
+// Sinaliza se o ultimo loadOrInitConfig precisou regenerar um config invalido
+// (self-heal). Lido pelo /health via wasConfigSelfHealed().
+let _selfHealed = false;
+export function wasConfigSelfHealed(): boolean { return _selfHealed; }
+
 export function configDir(): string {
   if (process.env.AXIS_PRINT_CONFIG_DIR) return process.env.AXIS_PRINT_CONFIG_DIR;
   if (process.platform === "win32") return path.join(process.env.APPDATA ?? os.homedir(), "axis-print");
@@ -56,6 +61,7 @@ export function lockdownConfigFile(): void {
 }
 
 export function loadOrInitConfig(): AgentConfig {
+  _selfHealed = false; // reset por load
   const dir = configDir();
   fs.mkdirSync(dir, { recursive: true });
   const file = configPath();
@@ -67,6 +73,7 @@ export function loadOrInitConfig(): AgentConfig {
   try {
     return ConfigSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
   } catch (err) {
+    _selfHealed = true;
     const backup = `${file}.bak.${Date.now()}`;
     try { fs.renameSync(file, backup); } catch { /* se nem renomear der, sobrescreve */ }
     const seed = generateSeed();
