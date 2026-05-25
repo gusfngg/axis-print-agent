@@ -1,0 +1,7 @@
+{
+  "token": "GERADO_NO_PRIMEIRO_RUN_NAO_PREENCHER",
+  "printerName": "auto",
+  "printerType": "EPSON",
+  "characterSet": "PC860_PORTUGUESE",
+  "allowedOrigins": ["https://axis-erp.vercel.app"]
+}
