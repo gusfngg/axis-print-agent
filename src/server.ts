@@ -6,6 +6,7 @@ import { makeRequireAuth } from "./auth-hook";
 import { registerPrintRoute } from "./routes/print";
 import { registerHealthRoute } from "./routes/health";
 import { registerPrintersRoute } from "./routes/printers";
+import { registerConfigRoute } from "./routes/config";
 import type { PrinterDriver } from "./printer-driver";
 import type { AgentConfig } from "./config";
 
@@ -25,6 +26,7 @@ export function buildServer(deps: { config: AgentConfig; printer: PrinterDriver 
     registerHealthRoute(app, { printer: deps.printer, printerName: deps.config.printerName });
     registerPrintersRoute(app, { printer: deps.printer, requireAuth });
     registerPrintRoute(app, { printer: deps.printer, requireAuth });
+    registerConfigRoute(app, { config: deps.config, requireAuth });
   });
 
   return app;
