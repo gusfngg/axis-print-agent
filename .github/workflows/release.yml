@@ -39,10 +39,16 @@ jobs:
         shell: pwsh
         run: |
           $p = Start-Process -FilePath dist/axis-print-agent.exe -ArgumentList "--no-tray" -PassThru
-          Start-Sleep -Seconds 4
           try {
-            $r = Invoke-WebRequest "http://127.0.0.1:9101/health" -UseBasicParsing -TimeoutSec 5
-            if ($r.StatusCode -ne 200) { throw "health status $($r.StatusCode)" }
+            $ok = $false
+            for ($i = 0; $i -lt 15; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $r = Invoke-WebRequest "http://127.0.0.1:9101/health" -UseBasicParsing -TimeoutSec 3
+                if ($r.StatusCode -eq 200) { $ok = $true; break }
+              } catch { }
+            }
+            if (-not $ok) { throw "health never returned 200 after 15s" }
             $log = Join-Path $env:APPDATA "axis-print/logs/agent.log"
             if (-not (Test-Path $log)) { throw "no log file written — logger broken in packaged exe" }
           } finally {

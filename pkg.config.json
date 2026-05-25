@@ -3,7 +3,8 @@
     "assets": [
       "node_modules/@thiagoelg/node-printer/lib/**/*.node",
       "node_modules/@thiagoelg/node-printer/build/Release/*.node",
-      "node_modules/systray2/traybin/**/*"
+      "node_modules/systray2/traybin/**/*",
+      "assets/**"
     ],
     "targets": ["node20-win-x64"],
     "outputPath": "dist"
