@@ -26,7 +26,21 @@ async function main(): Promise<void> {
   }
 
   const app = buildServer({ config, printer });
-  await app.listen({ host: BIND_HOST, port: PORT });
+  try {
+    await app.listen({ host: BIND_HOST, port: PORT });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      const { isHealthyAgentRunning } = await import("./single-instance.js");
+      if (await isHealthyAgentRunning()) {
+        logger.info({ port: PORT }, "agent already running — exiting cleanly");
+        process.exit(0);
+      }
+      logger.error({ port: PORT }, "port in use by a non-agent process");
+    } else {
+      logger.error({ err: (err as Error).message }, "listen failed");
+    }
+    process.exit(1);
+  }
   logger.info({ host: BIND_HOST, port: PORT, fake: useFake }, "agent listening");
 
   let printerOnline = false;
