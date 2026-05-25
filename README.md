@@ -7,7 +7,7 @@ automaticamente no `window.print()` do navegador.
 
 ## Contrato com o Axis (NÃO QUEBRAR)
 - `POST /print`  Bearer · body `{ receipt: ReceiptDto }` → `200 {ok,durationMs}` / `503 {ok:false,error}`
-- `GET  /health` (sem Bearer) → `{ ok, version, printer:{name,online}, uptimeSec }`
+- `GET  /health` (sem Bearer) → `{ ok, version, build, printer:{name,online}, uptimeSec, configError? }`
 - `GET  /printers` Bearer → `{ printers: string[] }`
 - `ReceiptDto` = cópia byte-a-byte de `src/lib/receipt-dto.ts` do repo Axis. Contrato v1.
 
@@ -26,6 +26,16 @@ npm run build:exe   # gera dist/axis-print-agent.exe (~40MB)
 ## Config
 `%APPDATA%/axis-print/config.json` (macOS: `~/Library/Application Support/axis-print/`).
 O `token` é gerado no 1º run. Cole-o na tela **Admin → Agente de Impressão** do Axis.
+
+## Configuração em runtime
+- `POST /config` (Bearer) `{ "printerName": "<nome da lista de /printers>" }` → seta a impressora e persiste.
+- `GET /health` inclui `build` (gitSHA/timestamp do release; "dev" local) e `configError` quando o config foi auto-regenerado.
+
+## Resiliência
+- `config.json` corrompido → backup `.bak.<ts>` + regeneração (re-pareamento necessário; logado).
+- Segundo launch com agente saudável já na 9101 → sai com exit 0 (sem crash).
+- Logs via `rotating-file-stream` (sem worker thread → compatível com o `.exe` empacotado), teto 20MB × 14 arquivos.
+- Impressões serializadas (mutex) — sem vias concorrentes.
 
 ## Segurança
 Bind só em 127.0.0.1; CORS + Private Network Access; Bearer timing-safe;
