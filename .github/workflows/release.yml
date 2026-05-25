@@ -1,0 +1,68 @@
+name: release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        run: npm ci
+      - name: Rebuild native printer for win32-x64
+        run: npm rebuild @thiagoelg/node-printer
+      - name: Confirm native .node exists
+        shell: pwsh
+        run: |
+          $n = Get-ChildItem -Recurse node_modules/@thiagoelg/node-printer -Filter *.node
+          if (-not $n) { throw "no native .node found — printer would not work in the exe" }
+          $n | ForEach-Object { Write-Host $_.FullName }
+      - name: Test
+        run: npm test
+      - name: Build exe
+        env:
+          AGENT_BUILD: "${{ github.ref_name }}-${{ github.sha }}"
+        run: npm run build:exe
+      - name: SHA-256
+        id: hash
+        shell: pwsh
+        run: |
+          $h = (Get-FileHash dist/axis-print-agent.exe -Algorithm SHA256).Hash.ToLower()
+          "$h" | Out-File -Encoding ascii dist/axis-print-agent.exe.sha256
+          "sha256=$h" >> $env:GITHUB_OUTPUT
+      - name: Smoke test the exe (boot + /health + log written)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist/axis-print-agent.exe -ArgumentList "--no-tray" -PassThru
+          Start-Sleep -Seconds 4
+          try {
+            $r = Invoke-WebRequest "http://127.0.0.1:9101/health" -UseBasicParsing -TimeoutSec 5
+            if ($r.StatusCode -ne 200) { throw "health status $($r.StatusCode)" }
+            $log = Join-Path $env:APPDATA "axis-print/logs/agent.log"
+            if (-not (Test-Path $log)) { throw "no log file written — logger broken in packaged exe" }
+          } finally {
+            Stop-Process -Id $p.Id -Force
+          }
+      - name: Stamp hash into install.bat
+        shell: pwsh
+        run: |
+          (Get-Content install/install.bat) -replace "__SHA256__", "${{ steps.hash.outputs.sha256 }}" | Set-Content install/install.bat
+      - name: Package zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Force -Path dist/axis-print-agent.exe, dist/axis-print-agent.exe.sha256, install/* -DestinationPath dist/axis-print-agent.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/axis-print-agent.exe
+            dist/axis-print-agent.exe.sha256
+            dist/axis-print-agent.zip
+          body: |
+            ## axis-print-agent ${{ github.ref_name }}
+            **SHA-256 do .exe:** `${{ steps.hash.outputs.sha256 }}`
+            Confira este hash contra o que o `install.bat` mostra antes de instalar.
