@@ -34,4 +34,12 @@ describe("logger", () => {
     const log = createLogger(bad);
     expect(() => log.info({ a: 1 }, "x")).not.toThrow();
   });
+
+  it("createLogger absorve um evento 'error' do stream sem derrubar o processo", () => {
+    // Modo de falha real do rotating-file-stream: disco cheio/sem permissao chega
+    // como evento 'error' assincrono, nao como erro sincrono no write().
+    const s = new Writable({ write(_c, _e, cb) { cb(); } });
+    createLogger(s);
+    expect(() => s.emit("error", new Error("disk full"))).not.toThrow();
+  });
 });
