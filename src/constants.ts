@@ -2,6 +2,8 @@
 export const BIND_HOST = "127.0.0.1" as const;
 export const PORT = 9101 as const;
 export const AGENT_VERSION = "1.0.0" as const;
+/** Build stamp injetado pelo tsup `define` (gitSHA/timestamp); fallback "dev" em dev/teste. */
+export const AGENT_BUILD = process.env.AGENT_BUILD ?? "dev";
 
 /** Camada 4: limite de body (DoS). */
 export const MAX_BODY_BYTES = 32 * 1024;

@@ -90,4 +90,11 @@ describe("buildServer (stack completa)", () => {
     const res = await app.inject({ method: "POST", url: "/print", headers: { host: HOST, origin: "http://evil.com", authorization: `Bearer ${TOKEN}` }, payload: { receipt: {} } });
     expect(res.statusCode).toBe(403);
   });
+
+  it("/health expoe version e build", async () => {
+    const res = await app.inject({ method: "GET", url: "/health", headers: { host: HOST } });
+    const body = res.json();
+    expect(typeof body.version).toBe("string");
+    expect(typeof body.build).toBe("string"); // "dev" em teste
+  });
 });
