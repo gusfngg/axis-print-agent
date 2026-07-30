@@ -29,9 +29,29 @@ netsh advfirewall firewall delete rule name="AxisPrintAgent-block-9101" >nul 2>&
 netsh advfirewall firewall add rule name="AxisPrintAgent-block-9101" dir=in action=block protocol=TCP localport=9101 remoteip=LocalSubnet,Internet >nul 2>&1
 if errorlevel 1 ( echo AVISO: sem permissao p/ firewall. Rode como admin se quiser a regra. )
 
-echo Criando atalho de inicializacao...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$s=(New-Object -COM WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Startup')+'\AxisPrintAgent.lnk'); $s.TargetPath='%DEST%\%EXE%'; $s.WorkingDirectory='%DEST%'; $s.Save()"
+REM ---------------------------------------------------------------
+REM  Inicializacao automatica: TAREFA AGENDADA, nao pasta Startup.
+REM
+REM  No totem o Windows roda em Assigned Access (modo quiosque, conta
+REM  kioskUser0). Nessa sessao o Explorer NAO sobe — e sem Explorer a
+REM  pasta Startup nunca e processada. Um atalho ali "instalaria com
+REM  sucesso" e o agente jamais iniciaria: a falha so apareceria na
+REM  primeira NFC-e que nao imprimisse. Tarefa agendada roda com ou
+REM  sem shell.
+REM ---------------------------------------------------------------
+echo Registrando inicializacao automatica (tarefa agendada)...
+schtasks /Create /TN "AxisPrintAgent" /TR "\"%DEST%\%EXE%\"" /SC ONLOGON /RU "%USERNAME%" /F >nul 2>&1
+if errorlevel 1 (
+  echo AVISO: nao foi possivel criar a tarefa agendada.
+  echo        Caindo pro atalho em Startup — ATENCAO: isso NAO funciona
+  echo        em modo quiosque/Assigned Access. Verifique manualmente.
+  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$s=(New-Object -COM WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Startup')+'\AxisPrintAgent.lnk'); $s.TargetPath='%DEST%\%EXE%'; $s.WorkingDirectory='%DEST%'; $s.Save()"
+) else (
+  echo Tarefa "AxisPrintAgent" criada para o usuario %USERNAME%.
+  echo IMPORTANTE: rode este instalador NA CONTA que o totem usa ^(ex: kioskUser0^),
+  echo             senao a tarefa nasce na conta errada e nao dispara.
+)
 
 echo Iniciando o agente...
 start "" "%DEST%\%EXE%"

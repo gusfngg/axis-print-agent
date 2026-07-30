@@ -1,6 +1,7 @@
 import { ThermalPrinter, PrinterTypes, CharacterSet } from "node-thermal-printer";
 import type { PrinterDriver } from "./printer-driver";
-import type { AgentConfig } from "./config";
+import { AUTO_PRINTER, type AgentConfig } from "./config";
+import { pickPrinterName } from "./printer-select";
 import type { ReceiptDto } from "./receipt-dto";
 import { buildReceiptOps, type ReceiptOp } from "./receipt-layout";
 import { logger } from "./logger";
@@ -34,10 +35,36 @@ function applyOp(p: ThermalPrinter, op: ReceiptOp): void {
 export class NodeThermalPrinterDriver implements PrinterDriver {
   constructor(private cfg: AgentConfig) {}
 
+  /**
+   * `printerName: "auto"` (default do primeiro run) NAO e nome de fila valido:
+   * se descesse cru viraria `printer:auto` e so quebraria na hora de imprimir,
+   * com o cliente esperando. Aqui vira a impressora padrao do SO; sem padrao,
+   * usa a unica instalada. null = nao da pra decidir (0, ou varias sem padrao)
+   * — quem chama falha explicito em vez de chutar a fila errada.
+   */
+  resolvePrinterName(): string | null {
+    if (this.cfg.printerName !== AUTO_PRINTER) return this.cfg.printerName;
+    let osDefault: string | null = null;
+    try {
+      const def = nativeDriver().getDefaultPrinterName?.();
+      if (typeof def === "string") osDefault = def;
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, "printer.getDefaultPrinterName failed");
+    }
+    return pickPrinterName(this.cfg.printerName, osDefault, this.listPrinters());
+  }
+
   private make(): ThermalPrinter {
+    const name = this.resolvePrinterName();
+    if (!name) {
+      throw new Error(
+        "PRINTER_NOT_CONFIGURED: printerName='auto' e nao foi possivel resolver a impressora padrao. " +
+          "Liste com GET /printers e escolha via POST /config.",
+      );
+    }
     return new ThermalPrinter({
       type: (PrinterTypes as Record<string, PrinterTypes>)[this.cfg.printerType] ?? PrinterTypes.EPSON,
-      interface: `printer:${this.cfg.printerName}`,
+      interface: `printer:${name}`,
       driver: nativeDriver(),
       width: 48,
       characterSet:
