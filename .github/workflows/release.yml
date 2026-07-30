@@ -6,7 +6,13 @@ permissions:
   contents: write
 jobs:
   build-windows:
-    runs-on: windows-latest
+    # PIN deliberado — NAO volte pra windows-latest: em 2026-07 o runner latest
+    # passou a trazer Visual Studio 18, que o node-gyp 10.x (o que acompanha o
+    # Node 20) nao reconhece -> 'unknown version "undefined" found at
+    # C:\Program Files\Microsoft Visual Studio\18\Enterprise'. Como o
+    # @thiagoelg/node-printer compila nativo, o npm ci quebra inteiro e o
+    # release nao sai. windows-2022 tem VS 2022 — ambiente onde o v1.0.0 buildou.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
