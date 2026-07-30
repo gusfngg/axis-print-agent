@@ -7,6 +7,12 @@ export interface PrinterDriver {
   printReceipt(dto: ReceiptDto): Promise<void>;
   /** Lista os nomes de impressoras instaladas no SO. */
   listPrinters(): string[];
+  /**
+   * Nome da fila que sera usada de fato. Com `printerName: "auto"`, resolve pra
+   * impressora padrao do SO (ou a unica instalada). `null` = nao deu pra
+   * resolver — o agente sobe, mas /health acusa e a impressao falha explicito.
+   */
+  resolvePrinterName(): string | null;
 }
 
 /** Fake pra testes e modo dev (`--fake`). Registra o que "imprimiu". */
@@ -29,5 +35,8 @@ export class FakePrinterDriver implements PrinterDriver {
   }
   listPrinters(): string[] {
     return this.printers;
+  }
+  resolvePrinterName(): string | null {
+    return this.printers[0] ?? null;
   }
 }

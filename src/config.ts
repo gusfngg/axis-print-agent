@@ -7,6 +7,12 @@ import { execFileSync } from "node:child_process";
 // IMPORTANTE: ciclo de import. NAO importe `logger` no topo. Use import dinamico
 // dentro de loadOrInitConfig (abaixo) pra quebrar o ciclo config<->logger.
 
+/**
+ * Sentinela de `printerName`: resolvido em runtime pra impressora padrao do SO.
+ * Ver NodeThermalPrinterDriver.resolvePrinterName().
+ */
+export const AUTO_PRINTER = "auto";
+
 export const ConfigSchema = z.object({
   token: z.string().regex(/^[0-9a-f]{64}$/),
   printerName: z.string().min(1),
@@ -35,7 +41,7 @@ export function configPath(): string {
 }
 
 function generateSeed(): AgentConfig {
-  return ConfigSchema.parse({ token: crypto.randomBytes(32).toString("hex"), printerName: "auto" });
+  return ConfigSchema.parse({ token: crypto.randomBytes(32).toString("hex"), printerName: AUTO_PRINTER });
 }
 
 function writeConfig(cfg: AgentConfig): void {
