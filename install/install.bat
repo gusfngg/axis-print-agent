@@ -19,10 +19,31 @@ if /I not "%ACTUAL%"=="%EXPECTED%" (
 )
 echo Hash OK.
 
-set DEST=%LOCALAPPDATA%\Axis\PrintAgent
+net session >nul 2>&1
+if errorlevel 1 (
+  echo ERRO: rode este instalador como ADMINISTRADOR.
+  echo       Sem admin nao da pra criar a tarefa ONSTART/SYSTEM nem ajustar ACL,
+  echo       e o agente nao sobe no totem ^(Assigned Access^). & pause & exit /b 1
+)
+
+REM  ProgramData, nao %LOCALAPPDATA%: o agente roda como SYSTEM e perfil de
+REM  usuario e armadilha de permissao.
+set DEST=C:\ProgramData\Axis\PrintAgent
+set CFGDIR=C:\ProgramData\axis-print
 mkdir "%DEST%" 2>nul
+mkdir "%CFGDIR%" 2>nul
 copy /Y "%EXE%" "%DEST%\%EXE%" >nul
+copy /Y "run.bat" "%DEST%\run.bat" >nul
 echo Copiado para %DEST%
+
+REM  Sem esta var DE MAQUINA o config nasce no %APPDATA% de quem executa, e
+REM  trocar a conta de execucao faz o agente "perder" o token e gerar outro.
+setx AXIS_PRINT_CONFIG_DIR "%CFGDIR%" /M >nul
+
+REM  lockdownConfigFile() faz icacls /inheritance:r, que remove ate o SYSTEM.
+REM  Rodando como SYSTEM o agente nao leria o proprio config -> regenera ->
+REM  EPERM -> perde o token. SIDs em vez de nomes: funciona em Windows pt-BR.
+icacls "%CFGDIR%" /grant "*S-1-5-18:(OI)(CI)F" /grant "*S-1-5-32-544:(OI)(CI)F" /T >nul 2>&1
 
 echo Criando regra de firewall (bloqueia 9101 vindo de fora do loopback)...
 netsh advfirewall firewall delete rule name="AxisPrintAgent-block-9101" >nul 2>&1
@@ -39,22 +60,26 @@ REM  sucesso" e o agente jamais iniciaria: a falha so apareceria na
 REM  primeira NFC-e que nao imprimisse. Tarefa agendada roda com ou
 REM  sem shell.
 REM ---------------------------------------------------------------
+REM  ONSTART + SYSTEM + run.bat. Tres decisoes, todas com motivo:
+REM   - ONSTART, nao ONLOGON: dispara no boot, independente de quem loga. No
+REM     totem quem loga e kioskUser0 (autologon); amarrar a tarefa a outra
+REM     conta faz ela nunca disparar.
+REM   - SYSTEM: nao exige senha armazenada e roda antes de qualquer login.
+REM   - run.bat, nao o .exe: o .exe direto no /TR nao executa (campo), e o
+REM     .bat e o supervisor que reergue o agente se ele cair.
 echo Registrando inicializacao automatica (tarefa agendada)...
-schtasks /Create /TN "AxisPrintAgent" /TR "\"%DEST%\%EXE%\"" /SC ONLOGON /RU "%USERNAME%" /F >nul 2>&1
+schtasks /Create /TN "AxisPrintAgent" /TR "\"%DEST%\run.bat\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul 2>&1
 if errorlevel 1 (
-  echo AVISO: nao foi possivel criar a tarefa agendada.
-  echo        Caindo pro atalho em Startup — ATENCAO: isso NAO funciona
-  echo        em modo quiosque/Assigned Access. Verifique manualmente.
-  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$s=(New-Object -COM WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Startup')+'\AxisPrintAgent.lnk'); $s.TargetPath='%DEST%\%EXE%'; $s.WorkingDirectory='%DEST%'; $s.Save()"
-) else (
-  echo Tarefa "AxisPrintAgent" criada para o usuario %USERNAME%.
-  echo IMPORTANTE: rode este instalador NA CONTA que o totem usa ^(ex: kioskUser0^),
-  echo             senao a tarefa nasce na conta errada e nao dispara.
+  echo ERRO: nao foi possivel criar a tarefa agendada.
+  echo       NAO caia pra pasta Startup: em Assigned Access o Explorer nao
+  echo       sobe, a Startup nunca e processada e o agente jamais inicia --
+  echo       falha silenciosa que so aparece quando a nota nao sai.
+  pause & exit /b 1
 )
+echo Tarefa "AxisPrintAgent" criada ^(ONSTART, SYSTEM^).
 
 echo Iniciando o agente...
-start "" "%DEST%\%EXE%"
+schtasks /Run /TN "AxisPrintAgent" >nul 2>&1
 timeout /t 4 >nul
 start "" "http://127.0.0.1:9101/health"
 
