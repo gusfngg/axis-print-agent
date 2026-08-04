@@ -18,6 +18,16 @@ const run = read("run.bat");
 const uninstall = read("uninstall.bat");
 
 describe("install.bat — inicializacao que sobrevive ao Assigned Access", () => {
+  // Rodar como admin inicia o cmd em System32, nao na pasta do script. Sem o
+  // cd, todo path relativo (o .exe, o run.bat, o certutil) quebra e o
+  // instalador para dizendo que nao acha o arquivo que esta ali do lado.
+  it("fixa o CWD na pasta do script antes de qualquer path relativo", () => {
+    const cd = install.indexOf('cd /d "%~dp0"');
+    const primeiroUso = install.indexOf('if not exist "%EXE%"');
+    expect(cd).toBeGreaterThan(-1);
+    expect(primeiroUso).toBeGreaterThan(cd);
+  });
+
   it("cria a tarefa como ONSTART, nunca ONLOGON", () => {
     expect(install).toContain("/SC ONSTART");
     expect(install).not.toContain("/SC ONLOGON");

@@ -1,5 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
+REM  "Executar como administrador" inicia o cmd em C:\Windows\System32, nao na
+REM  pasta do script. Sem isto, %EXE% e run.bat sao procurados no lugar errado
+REM  e o instalador para com "nao encontrado nesta pasta" -- com o arquivo la.
+cd /d "%~dp0"
 set EXE=axis-print-agent.exe
 set EXPECTED=__SHA256__
 
