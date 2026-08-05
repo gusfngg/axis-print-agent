@@ -18,9 +18,24 @@ export const ConfigSchema = z.object({
   printerName: z.string().min(1),
   printerType: z.enum(["EPSON", "STAR", "TANCA", "DARUMA", "BROTHER"]).default("EPSON"),
   characterSet: z.string().default("PC860_PORTUGUESE"),
+  /**
+   * Allow-list da Camada 2. Origin fora daqui leva 403 no onRequest, ANTES do
+   * Bearer — e o front, sem resposta do agente, cai no window.print() do
+   * navegador. O sintoma no caixa (dialogo de impressao abrindo) e identico ao
+   * de agente morto, por isso o default errado custou caro: o deploy real e
+   * superauto-totem.vercel.app, mas o default so listava axis-erp.vercel.app.
+   *
+   * ATENCAO: mexer aqui so afeta config NOVA. Em maquina ja instalada o campo
+   * ja esta gravado no config.json e o default do Zod nao se aplica — tem que
+   * editar o arquivo e reiniciar o agente.
+   */
   allowedOrigins: z
     .array(z.string().url())
-    .default(["https://axis-erp.vercel.app", "http://localhost:3000"]),
+    .default([
+      "https://superauto-totem.vercel.app",
+      "https://axis-erp.vercel.app",
+      "http://localhost:3000",
+    ]),
 });
 export type AgentConfig = z.infer<typeof ConfigSchema>;
 

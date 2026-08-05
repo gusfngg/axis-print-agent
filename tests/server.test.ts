@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { Writable } from "node:stream";
 import { buildServer } from "../src/server";
+import { createLogger } from "../src/logger";
 import { FakePrinterDriver } from "../src/printer-driver";
 import { RATE_LIMIT_MAX } from "../src/constants";
 import type { AgentConfig } from "../src/config";
@@ -108,5 +110,92 @@ describe("buildServer (stack completa)", () => {
     await healed.ready();
     const res = await healed.inject({ method: "GET", url: "/health", headers: { host: HOST } });
     expect(res.json().configError).toBe(true);
+  });
+});
+
+// Antes destes testes o server subia com `logger: false`: o Fastify injetava um
+// req.log NO-OP e TUDO que as rotas logavam sumia -- inclusive "print failed".
+// Uma nota que nao saia no caixa nao deixava uma linha sequer no agent.log, e
+// agente morto, Origin recusada e impressora offline ficavam indistinguiveis.
+describe("observabilidade (o agent.log tem que provar o que aconteceu)", () => {
+  const RECEIPT = {
+    saleNumber: "VEN-00009",
+    createdAt: "2026-05-24T12:00:00.000Z",
+    branch: { name: "L", address: "R", city: "C", state: "GO", phone: "x" },
+    items: [{ description: "i", quantity: 1, unitPrice: 1, subtotal: 1 }],
+    subtotal: 1, discount: 0, total: 1, payment: { method: "DINHEIRO" },
+    footerMessage: "ok", reprint: false,
+  };
+
+  function withCapturedLog(printer = new FakePrinterDriver()) {
+    const chunks: string[] = [];
+    const stream = new Writable({
+      write(chunk, _enc, cb) { chunks.push(chunk.toString()); cb(); },
+    });
+    const app = buildServer({ config: cfg, printer, loggerInstance: createLogger(stream) });
+    const records = (): Array<Record<string, unknown>> =>
+      chunks.join("").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    return { app, printer, records };
+  }
+
+  it("registra a impressao bem-sucedida (req.log nao pode ser no-op)", async () => {
+    const { app, records } = withCapturedLog();
+    await app.ready();
+    const res = await app.inject({
+      method: "POST", url: "/print",
+      headers: { host: HOST, origin: ORIGIN, authorization: `Bearer ${TOKEN}` },
+      payload: { receipt: RECEIPT },
+    });
+    expect(res.statusCode).toBe(200);
+    const printed = records().find((r) => r.msg === "printed");
+    expect(printed).toBeDefined();
+    expect(printed!.sale).toBe("VEN-00009");
+  });
+
+  it("registra a FALHA de impressao — o rastro que faltava quando a nota nao sai", async () => {
+    const printer = new FakePrinterDriver();
+    printer.shouldThrow = true;
+    const { app, records } = withCapturedLog(printer);
+    await app.ready();
+    const res = await app.inject({
+      method: "POST", url: "/print",
+      headers: { host: HOST, origin: ORIGIN, authorization: `Bearer ${TOKEN}` },
+      payload: { receipt: RECEIPT },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(records().some((r) => r.msg === "print failed")).toBe(true);
+  });
+
+  it("registra 403 de Origin recusada com a origin que veio", async () => {
+    const { app, records } = withCapturedLog();
+    await app.ready();
+    await app.inject({
+      method: "POST", url: "/print",
+      headers: { host: HOST, origin: "http://evil.invalid", authorization: `Bearer ${TOKEN}` },
+      payload: { receipt: RECEIPT },
+    });
+    const rec = records().find((r) => r.msg === "requisicao recusada");
+    expect(rec).toBeDefined();
+    expect(rec!.status).toBe(403);
+    expect(rec!.origin).toBe("http://evil.invalid");
+  });
+
+  it("registra 401 de token invalido", async () => {
+    const { app, records } = withCapturedLog();
+    await app.ready();
+    await app.inject({
+      method: "GET", url: "/printers",
+      headers: { host: HOST, origin: ORIGIN, authorization: "Bearer errado" },
+    });
+    const rec = records().find((r) => r.msg === "requisicao recusada");
+    expect(rec).toBeDefined();
+    expect(rec!.status).toBe(401);
+  });
+
+  it("nao loga requisicao normal (o /health e pollado a cada 30s)", async () => {
+    const { app, records } = withCapturedLog();
+    await app.ready();
+    await app.inject({ method: "GET", url: "/health", headers: { host: HOST } });
+    expect(records()).toHaveLength(0);
   });
 });

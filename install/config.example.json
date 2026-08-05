@@ -3,5 +3,5 @@
   "printerName": "auto",
   "printerType": "EPSON",
   "characterSet": "PC860_PORTUGUESE",
-  "allowedOrigins": ["https://axis-erp.vercel.app"]
+  "allowedOrigins": ["https://superauto-totem.vercel.app"]
 }
