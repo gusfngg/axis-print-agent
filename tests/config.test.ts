@@ -37,4 +37,13 @@ describe("config", () => {
     expect(cfg.allowedOrigins).toContain("https://axis-erp.vercel.app");
     expect(cfg.printerType).toBe("EPSON");
   });
+
+  // Regressao: o deploy real e superauto-totem.vercel.app, mas o default so
+  // listava axis-erp.vercel.app. Toda instalacao nova nascia recusando o Axis
+  // com 403 na Camada 2 -- e o caixa via o dialogo de impressao do navegador,
+  // sintoma identico ao de agente morto. Se sumir daqui, volta a nascer quebrado.
+  it("o default aceita a Origin do deploy de producao", () => {
+    const cfg = loadOrInitConfig();
+    expect(cfg.allowedOrigins).toContain("https://superauto-totem.vercel.app");
+  });
 });
