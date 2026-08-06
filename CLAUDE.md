@@ -33,6 +33,15 @@ carimba o SHA-256 dentro do `install.bat` e publica o zip.
 - `POST /config` (Bearer) · `{ printerName }` → seta impressora e persiste
 - `src/receipt-dto.ts` é **cópia byte-a-byte** de `src/lib/receipt-dto.ts` do repo Axis.
   Contrato v1: mudança incompatível exige bump de major + migração coordenada dos dois lados.
+- **v1.1 (agente 1.1.0) — DANFE NFC-e.** Os campos novos são todos OPCIONAIS: `branch.cnpj`,
+  `items[].code`, `items[].unit` e o bloco `fiscal` (`qrCode`, `chaveAcesso`, `numero`, `serie`,
+  `protocolo?`, `autorizadaEm?`, `urlConsulta?`, `tributos?`, `consumidor?`, `ambiente?`).
+  **`fiscal` presente ⇒ DANFE; ausente ⇒ notinha de caixa v1, idêntica à de antes.** Logo o
+  agente 1.1.0 imprime payload de Axis antigo, e Axis novo cai no layout v1 se o agente for
+  velho (o Zod dele ignora campo desconhecido) — **a ordem de deploy é indiferente**.
+  - **`fiscal.qrCode` NÃO é sanitizado nem reconstruído**: é o texto assinado pelo CSC do CNPJ
+    da loja e a SEFAZ confere essa assinatura na leitura. Só se repassa ao módulo de QR.
+  - `ambiente: "homologacao"` obriga o carimbo "SEM VALOR FISCAL" no cupom.
 
 ## Arquitetura
 

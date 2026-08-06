@@ -28,6 +28,9 @@ function applyOp(p: ThermalPrinter, op: ReceiptOp): void {
     case "leftRight": p.leftRight(op.l, op.r); break;
     case "line": p.drawLine(); break;
     case "newline": p.newLine(); break;
+    // `cellSize: 6` cabe a URL da NFC-e (~200 chars) em 80mm ainda legivel por
+    // celular; `correction: "M"` e o nivel recomendado pro DANFE.
+    case "qrcode": p.printQR(op.v, { cellSize: 6, correction: "M", model: 2 }); break;
     case "cut": p.cut(); break;
   }
 }

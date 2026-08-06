@@ -50,4 +50,67 @@ describe("buildReceiptOps", () => {
     const ops = buildReceiptOps(base);
     expect(ops[ops.length - 1]!.op).toBe("cut");
   });
+
+  it("sem bloco fiscal nao imprime QR Code (notinha de caixa segue v1)", () => {
+    expect(buildReceiptOps(base).some((o) => o.op === "qrcode")).toBe(false);
+    expect(texts(buildReceiptOps(base))).not.toContain("DANFE");
+  });
+});
+
+// ── DANFE NFC-e ──────────────────────────────────────────────────────────────
+
+const CHAVE = "35260812345678000190650010000081231234567890";
+const QR = `https://www.nfce.fazenda.sp.gov.br/qrcode?p=${CHAVE}|2|1|1|ABCDEF0123456789`;
+
+const fiscal: NonNullable<ReceiptDto["fiscal"]> = {
+  qrCode: QR,
+  chaveAcesso: CHAVE,
+  numero: "8123",
+  serie: "1",
+  protocolo: "135260000123456",
+  autorizadaEm: "2026-08-06T13:00:05.000Z",
+  urlConsulta: "www.nfce.fazenda.sp.gov.br/consulta",
+  tributos: 12.34,
+  ambiente: "producao",
+};
+
+const danfe = (over: Partial<NonNullable<ReceiptDto["fiscal"]>> = {}) =>
+  buildReceiptOps({ ...base, fiscal: { ...fiscal, ...over } });
+
+describe("buildReceiptOps — DANFE NFC-e", () => {
+  it("identifica o documento e imprime o QR com o texto EXATO do XML", () => {
+    const ops = danfe();
+    expect(texts(ops)).toContain("DANFE NFC-e");
+    const qr = ops.filter((o) => o.op === "qrcode") as Array<{ v: string }>;
+    expect(qr).toHaveLength(1);
+    // O conteúdo é assinado pelo CSC: alterar um byte invalida a consulta.
+    expect(qr[0]!.v).toBe(QR);
+  });
+
+  it("imprime a chave em grupos de 4 (caminho de consulta quando o QR nao le)", () => {
+    expect(texts(danfe())).toContain("3526 0812 3456 7800 0190");
+  });
+
+  it("declara os tributos da Lei 12.741 quando informados", () => {
+    expect(texts(danfe())).toContain("12.741");
+    const semTributo = { ...fiscal };
+    delete semTributo.tributos;
+    expect(texts(buildReceiptOps({ ...base, fiscal: semTributo }))).not.toContain("12.741");
+  });
+
+  it("consumidor: identificado quando informado, generico quando nao", () => {
+    expect(texts(danfe({ consumidor: "CPF 123.456.789-00" }))).toContain("123.456.789-00");
+    expect(texts(danfe())).toContain("CONSUMIDOR NAO IDENTIFICADO");
+  });
+
+  it("estampa o aviso obrigatorio em homologacao — e so nela", () => {
+    expect(texts(danfe({ ambiente: "homologacao" }))).toContain("SEM VALOR FISCAL");
+    expect(texts(danfe())).not.toContain("SEM VALOR FISCAL");
+  });
+
+  it("mantem 2a via e corte", () => {
+    const ops = buildReceiptOps({ ...base, reprint: true, fiscal });
+    expect(texts(ops)).toContain("2a VIA");
+    expect(ops[ops.length - 1]!.op).toBe("cut");
+  });
 });
