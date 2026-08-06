@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 /**
- * CONTRATO v1 com o Axis ERP. Cópia byte-a-byte de `src/lib/receipt-dto.ts` do
- * repo Axis. Mudança incompatível exige bump de major do agente + migração
+ * CONTRATO entre o Axis ERP e o `axis-print-agent`. Este arquivo existe DUAS
+ * vezes — `src/lib/receipt-dto.ts` (Axis) e `src/receipt-dto.ts` (agente) — e os
+ * dois são byte-a-byte idênticos: mexeu num, copie no outro (`diff` tem que sair
+ * vazio). Mudança incompatível exige bump de major do agente + migração
  * coordenada. Divergência é pega no smoke test (Task 15).
  *
  * **v1.1 (2026-08-06) — DANFE NFC-e.** Tudo que entrou é OPCIONAL, de propósito:
