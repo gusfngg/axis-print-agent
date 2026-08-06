@@ -28,6 +28,10 @@ carimba o SHA-256 dentro do `install.bat` e publica o zip.
 ## Contrato com o Axis (NÃO QUEBRAR)
 
 - `POST /print` (Bearer) · `{ receipt: ReceiptDto }` → `200 {ok,durationMs}` / `400 INVALID_PAYLOAD` / `503 PRINTER_OFFLINE|PRINT_FAILED`
+  - **Bearer = token estático OU print job** (agente ≥1.2.0). O job é um JWS HS256 assinado com o
+    token: header `{alg:"HS256",typ:"JWT"}`, claims `{typ:"axis-print-job", jti, iat, exp, sub}`
+    (`sub` = SHA-256 hex do cupom canônico — chaves ordenadas, `undefined` removido; ver
+    `receiptFingerprint`). TTL ≤ 5min, skew tolerado 30s, `jti` single-use.
 - `GET /health` (sem Bearer) → `{ ok, version, build, printer:{name,online}, uptimeSec, configError? }`
 - `GET /printers` (Bearer) → `{ printers: string[] }`
 - `POST /config` (Bearer) · `{ printerName }` → seta impressora e persiste
@@ -54,6 +58,13 @@ repo, mantenha-o ao mexer em segurança:
 1. bind hardcoded em `127.0.0.1` (`constants.ts`) — mudar quebra `tests/bind-localhost.test.ts`
 2. `origin-guard.ts`: header `Host` (anti DNS-rebinding) + allow-list de Origin + CORS + Private Network Access
 3. Bearer timing-safe (`auth.ts` hasheia antes do `timingSafeEqual` — não vaza comprimento)
+3b. **Print job assinado** (`print-job.ts`, agente 1.2.0): o `Authorization` aceita OU o token
+   estático OU um JWS HS256 de 60s assinado **com** o token. O Axis passou a mandar o job, então
+   o segredo de longa duração não desce mais ao browser do totem (achado ALTO, axis-security
+   2026-07-31). Validação: assinatura → `typ`/`exp`/TTL ≤ 5min → `sub` (SHA-256 do cupom, prende
+   o job AO papel) → `jti` single-use (`ReplayGuard`, `Map` em memória). O motivo da recusa vai
+   pro log, nunca pra resposta (sempre `401 UNAUTHORIZED` — recusa detalhada é oráculo).
+   As duas formas convivem de propósito: o caixa ainda usa o token estático.
 4. `MAX_BODY_BYTES` + Zod no `ReceiptDto` + `sanitize.ts` (tira bytes de controle → bloqueia ESC/POS injetado em campo de texto)
 5. rate limit 30/min
 6. `logger.ts` com `scrub-pii` — PII só entra como **campo** do merge object, nunca na string de `msg` (o formatter só scrubeia campos)

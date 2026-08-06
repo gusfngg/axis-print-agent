@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import crypto from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import { registerPrintRoute } from "../src/routes/print";
 import { FakePrinterDriver } from "../src/printer-driver";
 import { makeRequireAuth } from "../src/auth-hook";
+import { receiptFingerprint } from "../src/print-job";
 
 const TOKEN = "a".repeat(64);
 const validReceipt = {
@@ -54,5 +56,72 @@ describe("POST /print", () => {
     printer.shouldThrow = true;
     const res = await app.inject({ method: "POST", url: "/print", headers: { authorization: `Bearer ${TOKEN}` }, payload: { receipt: validReceipt } });
     expect(res.statusCode).toBe(503);
+  });
+});
+
+/**
+ * Print job atravessando a ROTA (não só o verificador): é aqui que se prova que
+ * o Axis imprime sem nunca receber o `config.token`, e que o job não serve pra
+ * reimprimir nem pra imprimir outra coisa.
+ */
+describe("POST /print com print job assinado", () => {
+  const job = (over: Record<string, unknown> = {}, receipt: unknown = validReceipt) => {
+    const nowS = Math.floor(Date.now() / 1000);
+    const h = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const p = Buffer.from(
+      JSON.stringify({
+        typ: "axis-print-job",
+        jti: crypto.randomBytes(8).toString("hex"),
+        iat: nowS,
+        exp: nowS + 60,
+        sub: receiptFingerprint(receipt),
+        ...over,
+      }),
+    ).toString("base64url");
+    const s = crypto.createHmac("sha256", TOKEN).update(`${h}.${p}`).digest("base64url");
+    return `${h}.${p}.${s}`;
+  };
+
+  const post = (auth: string, receipt: unknown = validReceipt) =>
+    app.inject({
+      method: "POST",
+      url: "/print",
+      headers: { authorization: `Bearer ${auth}` },
+      payload: { receipt },
+    });
+
+  it("imprime com job valido — sem o token estatico sair do servidor", async () => {
+    const res = await post(job());
+    expect(res.statusCode).toBe(200);
+    expect(printer.printed).toHaveLength(1);
+  });
+
+  it("recusa o mesmo job duas vezes (nao vira reimpressao)", async () => {
+    const t = job();
+    expect((await post(t)).statusCode).toBe(200);
+    expect((await post(t)).statusCode).toBe(401);
+    expect(printer.printed).toHaveLength(1);
+  });
+
+  it("recusa job de um cupom para imprimir OUTRO", async () => {
+    const t = job(); // assinado sobre validReceipt
+    const outro = { ...validReceipt, saleNumber: "VEN-00999", total: 999 };
+    const res = await post(t, outro);
+    expect(res.statusCode).toBe(401);
+    expect(printer.printed).toHaveLength(0);
+  });
+
+  it("recusa job expirado", async () => {
+    const nowS = Math.floor(Date.now() / 1000);
+    expect((await post(job({ iat: nowS - 600, exp: nowS - 300 }))).statusCode).toBe(401);
+  });
+
+  it("nao revela o motivo da recusa na resposta (sem oraculo)", async () => {
+    const res = await post(job({ typ: "outro" }));
+    expect(res.json()).toEqual({ ok: false, error: "UNAUTHORIZED" });
+  });
+
+  it("token estatico continua valendo (caixa nao migrado)", async () => {
+    expect((await post(TOKEN)).statusCode).toBe(200);
   });
 });

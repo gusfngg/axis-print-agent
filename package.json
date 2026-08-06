@@ -1,6 +1,6 @@
 {
   "name": "axis-print-agent",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Agente local de impressao da notinha de caixa do Axis ERP (ESC/POS 80mm via spooler Windows).",
   "main": "dist/main.cjs",

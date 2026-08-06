@@ -8,7 +8,7 @@ export const PORT = 9101 as const;
  * usado pra conferir se o totem pegou a build nova. O `build` (AGENT_BUILD)
  * carrega tag+sha do release e continua sendo a fonte precisa.
  */
-export const AGENT_VERSION = "1.1.0" as const;
+export const AGENT_VERSION = "1.2.0" as const;
 /** Build stamp injetado pelo tsup `define` (gitSHA/timestamp); fallback "dev" em dev/teste. */
 export const AGENT_BUILD = process.env.AGENT_BUILD ?? "dev";
 
