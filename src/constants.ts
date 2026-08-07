@@ -2,13 +2,19 @@
 export const BIND_HOST = "127.0.0.1" as const;
 export const PORT = 9101 as const;
 /**
- * Versao reportada no /health. BUMPAR JUNTO com a "version" do package.json:
- * ficaram dessincronizados entre a v1.0.1 e a v1.0.3 (package em 1.0.1, esta
- * constante em 1.0.0) e o /health passou a mentir a versao -- justo o campo
- * usado pra conferir se o totem pegou a build nova. O `build` (AGENT_BUILD)
- * carrega tag+sha do release e continua sendo a fonte precisa.
+ * Versao reportada no /health, injetada pelo tsup a partir do `package.json`
+ * (`define` em tsup.config.ts) — NAO ha mais nada pra bumpar aqui.
+ *
+ * Era um literal mantido a mao, e por isso ficou travado em "1.0.0" da v1.0.0
+ * ate a v1.2.0: o /health mentia a versao justo no campo usado pra conferir se
+ * o totem pegou a build nova. Ja houve um commit so pra ressincronizar
+ * (1550ee5) e um comentario pedindo "bumpar junto" — os dois falharam, porque
+ * dependiam de disciplina humana. Agora a fonte da verdade e uma so.
+ *
+ * "dev" fora do bundle (vitest/tsx nao passam pelo tsup); o `build`
+ * (AGENT_BUILD) carrega tag+sha do release e segue sendo a referencia precisa.
  */
-export const AGENT_VERSION = "1.2.0" as const;
+export const AGENT_VERSION = process.env.AGENT_VERSION ?? "dev";
 /** Build stamp injetado pelo tsup `define` (gitSHA/timestamp); fallback "dev" em dev/teste. */
 export const AGENT_BUILD = process.env.AGENT_BUILD ?? "dev";
 
