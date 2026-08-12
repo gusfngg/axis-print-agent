@@ -9,6 +9,7 @@ automaticamente no `window.print()` do navegador.
 - `POST /print`  Bearer · body `{ receipt: ReceiptDto }` → `200 {ok,durationMs}` / `503 {ok:false,error}`
 - `GET  /health` (sem Bearer) → `{ ok, version, build, printer:{name,online}, uptimeSec, configError? }`
 - `GET  /printers` Bearer → `{ printers: string[] }`
+- `GET  /device-credential` (sem Bearer, **Origin obrigatório e na allow-list**) → `200 {secret}` / `404 {ok:false,error:"NOT_CONFIGURED"}` / `403 {ok:false,error:"FORBIDDEN_ORIGIN"}`
 - `ReceiptDto` = cópia byte-a-byte de `src/lib/receipt-dto.ts` do repo Axis. Contrato v1.
 
 ## Dev
@@ -26,6 +27,16 @@ npm run build:exe   # gera dist/axis-print-agent.exe (~40MB)
 ## Config
 `%APPDATA%/axis-print/config.json` (macOS: `~/Library/Application Support/axis-print/`).
 O `token` é gerado no 1º run. Cole-o na tela **Admin → Agente de Impressão** do Axis.
+
+Campos (JSON não aceita comentário — a referência é aqui):
+
+| Campo | Obrigatório | O quê |
+|---|---|---|
+| `token` | sim (auto) | Bearer das rotas `/print` e `/printers`; 64 hex, gerado no 1º run. |
+| `printerName` | sim | Nome no spooler, ou `"auto"` (impressora padrão do SO). |
+| `printerType` / `characterSet` | não | `EPSON` / `PC860_PORTUGUESE` por default. |
+| `resumeSecret` | **não** | 64 hex do **resume secret** do totem, gerado em **/configuracoes/totens** no Axis. Serve o `GET /device-credential`, que o kiosk troca por uma device session depois de um reboot (auto-cura da sessão). Sem ele a rota responde `404 NOT_CONFIGURED` e o totem exige ativação manual. Este é um **segredo** — o arquivo é 0600/ACL restrita e o agente nunca o loga. |
+| `allowedOrigins` | não | Allow-list de `Origin` (Camada 2). Mexer aqui só afeta config nova — em máquina já instalada, editar o arquivo e reiniciar. |
 
 ## Configuração em runtime
 - `POST /config` (Bearer) `{ "printerName": "<nome da lista de /printers>" }` → seta a impressora e persiste.

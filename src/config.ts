@@ -18,6 +18,10 @@ export const ConfigSchema = z.object({
   printerName: z.string().min(1),
   printerType: z.enum(["EPSON", "STAR", "TANCA", "DARUMA", "BROTHER"]).default("EPSON"),
   characterSet: z.string().default("PC860_PORTUGUESE"),
+  /** Resume secret do device (Axis) — credencial que re-loga o totem após
+   *  reboot. Gerado em /configuracoes/totens; 64 hex. Opcional: sem ele a rota
+   *  /device-credential responde 404 e o totem exige ativação manual. */
+  resumeSecret: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   /**
    * Allow-list da Camada 2. Origin fora daqui leva 403 no onRequest, ANTES do
    * Bearer — e o front, sem resposta do agente, cai no window.print() do

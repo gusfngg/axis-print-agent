@@ -3,6 +3,7 @@
   "printerName": "auto",
   "printerType": "EPSON",
   "characterSet": "PC860_PORTUGUESE",
+  "resumeSecret": "OPCIONAL_64_HEX_GERADO_EM_CONFIGURACOES_TOTENS_DO_AXIS",
   "allowedOrigins": [
     "https://superauto-totem.vercel.app",
     "https://axis-erp.vercel.app",
