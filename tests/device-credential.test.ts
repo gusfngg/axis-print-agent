@@ -22,7 +22,7 @@ async function buildTestApp(over: Partial<AgentConfig>) {
 }
 
 describe("GET /device-credential", () => {
-  test("com Origin permitido e secret configurado: 200 { secret }", async () => {
+  test("com Origin permitido e secret configurado: 200 com JWS de 60s (nunca o secret cru)", async () => {
     const app = await buildTestApp({ resumeSecret: SECRET });
     const res = await app.inject({
       method: "GET",
@@ -30,7 +30,19 @@ describe("GET /device-credential", () => {
       headers: { host: HOST, origin: "https://app.test" },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ secret: SECRET });
+    const body = res.json() as { job: string };
+    // O segredo cru NUNCA aparece no corpo — é o furo que esta correção fecha.
+    expect(res.payload).not.toContain(SECRET);
+    expect(body).not.toHaveProperty("secret");
+
+    const parts = body.job.split(".");
+    expect(parts).toHaveLength(3);
+    const [h, p] = parts as [string, string, string];
+    const header = JSON.parse(Buffer.from(h, "base64url").toString("utf8"));
+    const claims = JSON.parse(Buffer.from(p, "base64url").toString("utf8"));
+    expect(header.alg).toBe("HS256");
+    expect(claims.typ).toBe("axis-kiosk-resume");
+    expect(claims.exp - claims.iat).toBe(60);
   });
 
   test("sem header Origin: 403 (rota de segredo exige Origin — mais estrito que o guard default)", async () => {
