@@ -4,7 +4,7 @@ import { sanitizeText } from "./sanitize";
 export type ReceiptOp =
   | { op: "align"; v: "center" | "left" | "right" }
   | { op: "bold"; v: boolean }
-  | { op: "size"; v: "normal" | "double" }
+  | { op: "size"; v: "normal" | "double" | "quad" }
   | { op: "text"; v: string }
   | { op: "leftRight"; l: string; r: string }
   | { op: "line" }

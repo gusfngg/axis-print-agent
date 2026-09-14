@@ -1,10 +1,12 @@
-import type { ReceiptDto } from "./receipt-dto";
+import type { ReceiptDto, TicketDto } from "./receipt-dto";
 
 export interface PrinterDriver {
   /** True se a impressora configurada está acessível. */
   isConnected(): Promise<boolean>;
   /** Imprime a notinha. Lança em falha de hardware. */
   printReceipt(dto: ReceiptDto): Promise<void>;
+  /** Imprime o cupom de senha. Lança em falha de hardware. */
+  printTicket(dto: TicketDto): Promise<void>;
   /** Lista os nomes de impressoras instaladas no SO. */
   listPrinters(): string[];
   /**
@@ -19,6 +21,7 @@ export interface PrinterDriver {
 export class FakePrinterDriver implements PrinterDriver {
   connected: boolean;
   printed: ReceiptDto[] = [];
+  printedTickets: TicketDto[] = [];
   printers: string[];
   shouldThrow = false;
 
@@ -32,6 +35,10 @@ export class FakePrinterDriver implements PrinterDriver {
   async printReceipt(dto: ReceiptDto): Promise<void> {
     if (this.shouldThrow) throw new Error("print exploded");
     this.printed.push(dto);
+  }
+  async printTicket(dto: TicketDto): Promise<void> {
+    if (this.shouldThrow) throw new Error("print exploded");
+    this.printedTickets.push(dto);
   }
   listPrinters(): string[] {
     return this.printers;

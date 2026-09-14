@@ -2,8 +2,9 @@ import { ThermalPrinter, PrinterTypes, CharacterSet } from "node-thermal-printer
 import type { PrinterDriver } from "./printer-driver";
 import { AUTO_PRINTER, type AgentConfig } from "./config";
 import { pickPrinterName } from "./printer-select";
-import type { ReceiptDto } from "./receipt-dto";
+import type { ReceiptDto, TicketDto } from "./receipt-dto";
 import { buildReceiptOps, type ReceiptOp } from "./receipt-layout";
+import { buildTicketOps } from "./ticket-layout";
 import { logger } from "./logger";
 
 // Lazy-require do nativo: importar este arquivo NÃO deve carregar o binário.
@@ -21,7 +22,8 @@ function applyOp(p: ThermalPrinter, op: ReceiptOp): void {
       break;
     case "bold": p.bold(op.v); break;
     case "size":
-      if (op.v === "double") p.setTextDoubleHeight();
+      if (op.v === "quad") p.setTextQuadArea();
+      else if (op.v === "double") p.setTextDoubleHeight();
       else p.setTextNormal();
       break;
     case "text": p.println(op.v); break;
@@ -99,5 +101,11 @@ export class NodeThermalPrinterDriver implements PrinterDriver {
     const p = this.make();
     for (const op of buildReceiptOps(dto)) applyOp(p, op);
     await p.execute({ docname: `Axis ${dto.saleNumber}` });
+  }
+
+  async printTicket(dto: TicketDto): Promise<void> {
+    const p = this.make();
+    for (const op of buildTicketOps(dto)) applyOp(p, op);
+    await p.execute({ docname: `Axis senha ${dto.number}` });
   }
 }

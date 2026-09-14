@@ -37,9 +37,9 @@ export function makeRequireAuth(getToken: () => string, deps?: { replay?: Replay
       // O job é assinado sobre o cupom, então o fingerprint sai do corpo. Em
       // `/printers` e `/config` (sem cupom) o hash é o de `undefined` — estável
       // nos dois lados, então o job continua servindo para essas rotas.
-      const body = req.body as { receipt?: unknown } | undefined;
+      const body = req.body as { receipt?: unknown; ticket?: unknown } | undefined;
       const result = verifyPrintJob(provided, getToken(), {
-        expectedFingerprint: receiptFingerprint(body?.receipt),
+        expectedFingerprint: receiptFingerprint(body?.ticket ?? body?.receipt),
         replay,
       });
       if (!result.ok) {

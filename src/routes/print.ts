@@ -19,14 +19,14 @@ export function registerPrintRoute(
         if (!(await deps.printer.isConnected())) {
           return { code: 503 as const, body: { ok: false as const, error: "PRINTER_OFFLINE" } };
         }
-        await deps.printer.printReceipt(parsed.data.receipt);
+        if ("ticket" in parsed.data) await deps.printer.printTicket(parsed.data.ticket);
+        else await deps.printer.printReceipt(parsed.data.receipt);
         return { code: 200 as const, body: { ok: true as const, durationMs: Date.now() - started } };
       });
       if (result.code === 200) {
-        req.log.info(
-          { sale: parsed.data.receipt.saleNumber, durationMs: (result.body as { durationMs: number }).durationMs, reprint: parsed.data.receipt.reprint },
-          "printed",
-        );
+        const durationMs = (result.body as { durationMs: number }).durationMs;
+        if ("ticket" in parsed.data) req.log.info({ ticket: parsed.data.ticket.number, durationMs }, "printed");
+        else req.log.info({ sale: parsed.data.receipt.saleNumber, durationMs, reprint: parsed.data.receipt.reprint }, "printed");
       }
       return reply.code(result.code).send(result.body);
     } catch (err) {

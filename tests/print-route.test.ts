@@ -125,3 +125,44 @@ describe("POST /print com print job assinado", () => {
     expect((await post(TOKEN)).statusCode).toBe(200);
   });
 });
+
+/** Cupom de senha (v1.3): mesma rota, mesmo envelope assinado, `sub` sobre `body.ticket`. */
+describe("POST /print com { ticket }", () => {
+  const ticket = { number: 12, issuedAt: "2026-09-14T13:05:00.000Z", branchName: "São Roque" };
+
+  const job = (subject: unknown) => {
+    const nowS = Math.floor(Date.now() / 1000);
+    const h = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const p = Buffer.from(
+      JSON.stringify({ typ: "axis-print-job", jti: crypto.randomBytes(8).toString("hex"), iat: nowS, exp: nowS + 60, sub: receiptFingerprint(subject) }),
+    ).toString("base64url");
+    const s = crypto.createHmac("sha256", TOKEN).update(`${h}.${p}`).digest("base64url");
+    return `${h}.${p}.${s}`;
+  };
+
+  const post = (auth: string, payload: Record<string, unknown>) =>
+    app.inject({ method: "POST", url: "/print", headers: { authorization: `Bearer ${auth}` }, payload });
+
+  it("200 e imprime a senha com job assinado sobre o ticket", async () => {
+    const res = await post(job(ticket), { ticket });
+    expect(res.statusCode).toBe(200);
+    expect(printer.printedTickets).toEqual([ticket]);
+    expect(printer.printed).toHaveLength(0);
+  });
+
+  it("401 quando o job foi assinado sobre { receipt } e o body e { ticket }", async () => {
+    const res = await post(job(validReceipt), { ticket });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({ ok: false, error: "UNAUTHORIZED" });
+    expect(printer.printedTickets).toHaveLength(0);
+  });
+
+  it("400 INVALID_PAYLOAD com ticket fora do contrato", async () => {
+    for (const bad of [{ ...ticket, number: 0 }, { ...ticket, branchName: "x".repeat(81) }]) {
+      const res = await post(TOKEN, { ticket: bad });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe("INVALID_PAYLOAD");
+    }
+    expect(printer.printedTickets).toHaveLength(0);
+  });
+});

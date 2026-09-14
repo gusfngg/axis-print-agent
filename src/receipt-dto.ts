@@ -3,8 +3,8 @@ import { z } from "zod";
 /**
  * CONTRATO entre o Axis ERP e o `axis-print-agent`. Este arquivo existe DUAS
  * vezes — `src/lib/receipt-dto.ts` (Axis) e `src/receipt-dto.ts` (agente) — e os
- * dois são byte-a-byte idênticos: mexeu num, copie no outro (`diff` tem que sair
- * vazio). Mudança incompatível exige bump de major do agente + migração
+ * dois são byte-a-byte idênticos até o fim de `ReceiptDto` (`TicketDto` e o
+ * envelope `PrintRequest` abaixo são só do agente): mexeu num, copie no outro. Mudança incompatível exige bump de major do agente + migração
  * coordenada. Divergência é pega no smoke test (Task 15).
  *
  * **v1.1 (2026-08-06) — DANFE NFC-e.** Tudo que entrou é OPCIONAL, de propósito:
@@ -97,6 +97,18 @@ export const ReceiptDto = z.object({
 
 export type ReceiptDto = z.infer<typeof ReceiptDto>;
 
-/** Envelope que o hook `useThermalPrint` (Axis) manda no POST /print. */
-export const PrintRequest = z.object({ receipt: ReceiptDto });
+/**
+ * Cupom de SENHA (totem de senhas, v1.3). Espelho de `src/lib/queue-ticket-dto.ts`
+ * do Axis (lá se chama `QueueTicketDto`). O job é assinado sobre ESTE objeto —
+ * o fingerprint em `auth-hook.ts` usa `body.ticket ?? body.receipt`.
+ */
+export const TicketDto = z.object({
+  number: z.number().int().min(1).max(9999),
+  issuedAt: z.string().datetime(),
+  branchName: z.string().min(1).max(80),
+});
+export type TicketDto = z.infer<typeof TicketDto>;
+
+/** Envelope do POST /print: notinha/DANFE (`receipt`) ou cupom de senha (`ticket`). */
+export const PrintRequest = z.union([z.object({ receipt: ReceiptDto }), z.object({ ticket: TicketDto })]);
 export type PrintRequest = z.infer<typeof PrintRequest>;
