@@ -22,7 +22,9 @@ function applyOp(p: ThermalPrinter, op: ReceiptOp): void {
       break;
     case "bold": p.bold(op.v); break;
     case "size":
-      if (op.v === "quad") p.setTextQuadArea();
+      // "huge" = GS ! 0x77 (8x altura e largura): numero da senha lido a distancia.
+      if (op.v === "huge") p.setTextSize(7, 7);
+      else if (op.v === "quad") p.setTextQuadArea();
       else if (op.v === "double") p.setTextDoubleHeight();
       else p.setTextNormal();
       break;
