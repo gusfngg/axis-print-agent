@@ -6,7 +6,7 @@ do web app e imprime pelo spooler do Windows. Se estiver offline, o Axis cai
 automaticamente no `window.print()` do navegador.
 
 ## Contrato com o Axis (NÃO QUEBRAR)
-- `POST /print`  Bearer · body `{ receipt: ReceiptDto }` → `200 {ok,durationMs}` / `503 {ok:false,error}`
+- `POST /print`  Bearer · body `{ receipt: ReceiptDto }` (notinha/DANFE) **ou** `{ ticket: TicketDto }` (cupom de senha, v1.3) → `200 {ok,durationMs}` / `503 {ok:false,error}` — o job é assinado sobre o objeto enviado (`ticket ?? receipt`)
 - `GET  /health` (sem Bearer) → `{ ok, version, build, printer:{name,online}, uptimeSec, configError? }`
 - `GET  /printers` Bearer → `{ printers: string[] }`
 - `GET  /device-credential` (sem Bearer, **Origin obrigatório e na allow-list**) → `200 {job}` (JWS HS256 de 60s assinado com o `resumeSecret` — proof-of-possession; o segredo cru nunca sai do disco) / `404 {ok:false,error:"NOT_CONFIGURED"}` / `403 {ok:false,error:"FORBIDDEN_ORIGIN"}`
