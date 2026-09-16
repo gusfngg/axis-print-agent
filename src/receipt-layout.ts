@@ -145,9 +145,13 @@ function buildDanfeOps(dto: ReceiptDto, fiscal: NonNullable<ReceiptDto["fiscal"]
     ops.push({ op: "bold", v: false });
   }
 
+  // Rodapé do DANFE em 2x2 negrito: hoje é "AUTOATENDIMENTO" (vem do Axis) —
+  // identifica na hora que o cupom saiu do totem. 15 chars em 2x de largura
+  // cabem nos 42–48 cols de 80mm; 3x (45 cols) estouraria em impressora de 42.
   if (dto.footerMessage) {
-    ops.push({ op: "newline" });
+    ops.push({ op: "newline" }, { op: "bold", v: true }, { op: "size", v: "quad" });
     text(dto.footerMessage);
+    ops.push({ op: "size", v: "normal" }, { op: "bold", v: false });
   }
   ops.push({ op: "newline" }, { op: "cut" });
   return ops;

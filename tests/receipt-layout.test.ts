@@ -108,6 +108,13 @@ describe("buildReceiptOps — DANFE NFC-e", () => {
     expect(texts(danfe())).not.toContain("SEM VALOR FISCAL");
   });
 
+  it("rodape sai em quad negrito e volta ao normal antes do corte", () => {
+    const ops = buildReceiptOps({ ...base, footerMessage: "AUTOATENDIMENTO", fiscal });
+    const i = ops.findIndex((o) => o.op === "text" && o.v === "AUTOATENDIMENTO");
+    expect(ops.slice(i - 2, i)).toEqual([{ op: "bold", v: true }, { op: "size", v: "quad" }]);
+    expect(ops.slice(i + 1, i + 3)).toEqual([{ op: "size", v: "normal" }, { op: "bold", v: false }]);
+  });
+
   it("mantem 2a via e corte", () => {
     const ops = buildReceiptOps({ ...base, reprint: true, fiscal });
     expect(texts(ops)).toContain("2a VIA");
