@@ -9,6 +9,7 @@ import { registerHealthRoute } from "./routes/health";
 import { registerPrintersRoute } from "./routes/printers";
 import { registerConfigRoute } from "./routes/config";
 import { registerDeviceCredentialRoute } from "./routes/device-credential";
+import { registerPaygoWindowRoute } from "./routes/paygo-window";
 import type { PrinterDriver } from "./printer-driver";
 import type { AgentConfig } from "./config";
 
@@ -69,6 +70,7 @@ export function buildServer(deps: {
     registerPrintersRoute(app, { printer: deps.printer, requireAuth });
     registerPrintRoute(app, { printer: deps.printer, requireAuth });
     registerConfigRoute(app, { config: deps.config, requireAuth });
+    registerPaygoWindowRoute(app, { requireAuth, kioskHelperDir: deps.config.kioskHelperDir });
     // Mesma allow-list do origin-guard (linha do addHook acima) — uma fonte so.
     registerDeviceCredentialRoute(app, { config: deps.config, allowedOrigins: deps.config.allowedOrigins });
   });

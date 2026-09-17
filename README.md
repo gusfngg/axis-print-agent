@@ -9,6 +9,7 @@ automaticamente no `window.print()` do navegador.
 - `POST /print`  Bearer · body `{ receipt: ReceiptDto }` (notinha/DANFE) **ou** `{ ticket: TicketDto }` (cupom de senha, v1.3) → `200 {ok,durationMs}` / `503 {ok:false,error}` — o job é assinado sobre o objeto enviado (`ticket ?? receipt`)
 - `GET  /health` (sem Bearer) → `{ ok, version, build, printer:{name,online}, uptimeSec, configError? }`
 - `GET  /printers` Bearer → `{ printers: string[] }`
+- `POST /paygo-window` Bearer (job assinado sobre o `command`) · body `{ command: { kind: "paygo-window", show: boolean } }` → `200 {ok,show,autoHideMs}` — cria/apaga `<kioskHelperDir>\show.flag` (o AxisKioskHelper reexibe as janelas do PayGo pro estorno assistido; `show:true` auto-esconde em 15 min). v1.4.
 - `GET  /device-credential` (sem Bearer, **Origin obrigatório e na allow-list**) → `200 {job}` (JWS HS256 de 60s assinado com o `resumeSecret` — proof-of-possession; o segredo cru nunca sai do disco) / `404 {ok:false,error:"NOT_CONFIGURED"}` / `403 {ok:false,error:"FORBIDDEN_ORIGIN"}`
 - `ReceiptDto` = cópia byte-a-byte de `src/lib/receipt-dto.ts` do repo Axis. Contrato v1.
 
@@ -35,6 +36,7 @@ Campos (JSON não aceita comentário — a referência é aqui):
 | `token` | sim (auto) | Bearer das rotas `/print` e `/printers`; 64 hex, gerado no 1º run. |
 | `printerName` | sim | Nome no spooler, ou `"auto"` (impressora padrão do SO). |
 | `printerType` / `characterSet` | não | `EPSON` / `PC860_PORTUGUESE` por default. |
+| `kioskHelperDir` | não | Pasta do AxisKioskHelper onde vive o `show.flag` (`POST /paygo-window`). Default `C:\ProgramData\axis-kiosk-helper`. |
 | `resumeSecret` | **não** | 64 hex do **resume secret** do totem, gerado em **/configuracoes/totens** no Axis. É a **chave HMAC** do `GET /device-credential`: a rota assina com ela um JWS de 60s (nunca devolve o segredo cru) que o kiosk troca por uma device session depois de um reboot (auto-cura da sessão). Sem ele a rota responde `404 NOT_CONFIGURED` e o totem exige ativação manual. Este é um **segredo** — o arquivo é 0600/ACL restrita, o agente nunca o loga e ele não sai do disco. |
 | `allowedOrigins` | não | Allow-list de `Origin` (Camada 2). Mexer aqui só afeta config nova — em máquina já instalada, editar o arquivo e reiniciar. |
 

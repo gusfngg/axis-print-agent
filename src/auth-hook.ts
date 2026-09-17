@@ -37,9 +37,12 @@ export function makeRequireAuth(getToken: () => string, deps?: { replay?: Replay
       // O job é assinado sobre o cupom, então o fingerprint sai do corpo. Em
       // `/printers` e `/config` (sem cupom) o hash é o de `undefined` — estável
       // nos dois lados, então o job continua servindo para essas rotas.
-      const body = req.body as { receipt?: unknown; ticket?: unknown } | undefined;
+      // `command` (/paygo-window): mesmo contrato — o job e assinado sobre o
+      // objeto que o browser posta, entao um job de `show:true` nao serve para
+      // `show:false`.
+      const body = req.body as { receipt?: unknown; ticket?: unknown; command?: unknown } | undefined;
       const result = verifyPrintJob(provided, getToken(), {
-        expectedFingerprint: receiptFingerprint(body?.ticket ?? body?.receipt),
+        expectedFingerprint: receiptFingerprint(body?.ticket ?? body?.receipt ?? body?.command),
         replay,
       });
       if (!result.ok) {

@@ -22,6 +22,8 @@ export const ConfigSchema = z.object({
    *  reboot. Gerado em /configuracoes/totens; 64 hex. Opcional: sem ele a rota
    *  /device-credential responde 404 e o totem exige ativação manual. */
   resumeSecret: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  /** Pasta do AxisKioskHelper (`show.flag` do estorno assistido). Default: C:\\ProgramData\\axis-kiosk-helper. */
+  kioskHelperDir: z.string().min(1).optional(),
   /**
    * Allow-list da Camada 2. Origin fora daqui leva 403 no onRequest, ANTES do
    * Bearer — e o front, sem resposta do agente, cai no window.print() do
