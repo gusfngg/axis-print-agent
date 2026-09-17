@@ -10,8 +10,11 @@ export PATH="$HOME/.local/bin:$PATH"
 VER="${1:?uso: deploy-totem.sh vX.Y.Z}"
 TMP="$(mktemp -d)"
 gh release download "$VER" -D "$TMP" -p 'axis-print-agent.exe*'
-SHA="$(cut -d' ' -f1 "$TMP/axis-print-agent.exe.sha256")"
-echo "$SHA  $TMP/axis-print-agent.exe" | shasum -a 256 -c -
+# O .sha256 do CI vem "hash\r\n" (sem nome de arquivo, CRLF) — v1.4.0 quebrou o `shasum -c`.
+SHA="$(tr -d '\r\n ' < "$TMP/axis-print-agent.exe.sha256" | cut -c1-64 | tr 'A-F' 'a-f')"
+LOCAL="$(shasum -a 256 "$TMP/axis-print-agent.exe" | cut -c1-64)"
+[ "$SHA" = "$LOCAL" ] || { echo "SHA MISMATCH release=$SHA local=$LOCAL"; exit 1; }
+echo "sha256 ok $SHA"
 scp -q "$TMP/axis-print-agent.exe" totem:C:/ProgramData/Axis/PrintAgent/axis-print-agent.new.exe
 
 PS=$(cat <<EOF
