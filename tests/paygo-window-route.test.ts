@@ -67,6 +67,38 @@ describe("POST /paygo-window", () => {
     expect((await post(TOKEN, { kind: "outro", show: true })).statusCode).toBe(400);
   });
 
+  it("corpo com receipt + command (job assinado sobre o receipt) → 401 — nao executa o comando", async () => {
+    const receipt = { saleNumber: "X" };
+    const res = await app.inject({
+      method: "POST",
+      url: "/paygo-window",
+      headers: { authorization: `Bearer ${job(receipt)}` },
+      payload: { receipt, command: SHOW },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(fs.existsSync(flag())).toBe(false);
+  });
+
+  it("envelope com campo extra e token estatico → 400 (strict no envelope)", async () => {
+    const res = await post(TOKEN, SHOW);
+    expect(res.statusCode).toBe(200);
+    const extra = await app.inject({
+      method: "POST",
+      url: "/paygo-window",
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: { command: HIDE, receipt: { saleNumber: "X" } },
+    });
+    expect(extra.statusCode).toBe(400);
+  });
+
+  it("flag pre-existente e' apagado no registro da rota (fail-closed no boot)", async () => {
+    fs.writeFileSync(flag(), "");
+    const app2 = Fastify();
+    registerPaygoWindowRoute(app2, { requireAuth: makeRequireAuth(() => TOKEN), kioskHelperDir: dir });
+    await app2.ready();
+    expect(fs.existsSync(flag())).toBe(false);
+  });
+
   it("auto-esconde depois de autoHideMs", async () => {
     await post(TOKEN, SHOW);
     expect(fs.existsSync(flag())).toBe(true);

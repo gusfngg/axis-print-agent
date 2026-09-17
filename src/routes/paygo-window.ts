@@ -22,9 +22,11 @@ import type { RequireAuth } from "../auth-hook";
 export const AUTO_HIDE_MS = 15 * 60 * 1000;
 export const DEFAULT_KIOSK_HELPER_DIR = "C:\\ProgramData\\axis-kiosk-helper";
 
-const bodySchema = z.object({
-  command: z.object({ kind: z.literal("paygo-window"), show: z.boolean() }).strict(),
-});
+// `.strict()` nos DOIS niveis: envelope com `receipt`/`ticket` a mais e' corpo
+// ambiguo (o auth-hook ja recusa; aqui e' a segunda barreira).
+const bodySchema = z
+  .object({ command: z.object({ kind: z.literal("paygo-window"), show: z.boolean() }).strict() })
+  .strict();
 
 let autoHide: NodeJS.Timeout | null = null;
 
@@ -40,6 +42,9 @@ export function registerPaygoWindowRoute(
     if (autoHide) { clearTimeout(autoHide); autoHide = null; }
     try { fs.rmSync(flag, { force: true }); } catch { /* nada a esconder */ }
   };
+  // Fail-closed no boot: o timer de auto-esconder vive em memoria; agente
+  // reiniciado (reboot, watchdog) dentro dos 15 min deixaria o flag para sempre.
+  hide();
 
   app.post("/paygo-window", { preHandler: deps.requireAuth }, async (req, reply) => {
     const parsed = bodySchema.safeParse(req.body);

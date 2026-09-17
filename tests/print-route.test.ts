@@ -150,6 +150,18 @@ describe("POST /print com { ticket }", () => {
     expect(printer.printed).toHaveLength(0);
   });
 
+  it("401 com { ticket, receipt } no mesmo body — job sobre o ticket NAO imprime o receipt (DANFE forjado)", async () => {
+    const ticket = { kind: "senha", number: "A001", createdAt: "2026-05-24T12:00:00.000Z", branch: { name: "Loja" } };
+    const res = await app.inject({
+      method: "POST",
+      url: "/print",
+      headers: { authorization: `Bearer ${job(ticket)}` },
+      payload: { ticket, receipt: { ...validReceipt, fiscal: { chaveAcesso: "1".repeat(44), qrCode: "https://x", numero: "1", serie: "1" } } },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(printer.printed).toHaveLength(0);
+  });
+
   it("401 quando o job foi assinado sobre { receipt } e o body e { ticket }", async () => {
     const res = await post(job(validReceipt), { ticket });
     expect(res.statusCode).toBe(401);

@@ -41,8 +41,17 @@ export function makeRequireAuth(getToken: () => string, deps?: { replay?: Replay
       // objeto que o browser posta, entao um job de `show:true` nao serve para
       // `show:false`.
       const body = req.body as { receipt?: unknown; ticket?: unknown; command?: unknown } | undefined;
+      // O job assina UM objeto e o handler consome UM campo. Com dois campos no
+      // body o hash conferia sobre `ticket` e o /print imprimia `receipt` (DANFE
+      // forjado) ou o /paygo-window executava `command` sem sessao de manutencao
+      // — achado ALTO do axis-security (2026-09-17). Corpo ambiguo = 401.
+      const present = (["ticket", "receipt", "command"] as const).filter((k) => body?.[k] !== undefined);
+      if (present.length > 1) {
+        req.log.warn({ url: req.url, present }, "print job recusado: corpo com mais de um objeto assinavel");
+        return reply.code(401).send({ ok: false, error: "UNAUTHORIZED" });
+      }
       const result = verifyPrintJob(provided, getToken(), {
-        expectedFingerprint: receiptFingerprint(body?.ticket ?? body?.receipt ?? body?.command),
+        expectedFingerprint: receiptFingerprint(body?.[present[0] ?? "receipt"]),
         replay,
       });
       if (!result.ok) {
