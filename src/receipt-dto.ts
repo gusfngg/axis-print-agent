@@ -93,6 +93,13 @@ export const ReceiptDto = z.object({
       ambiente: z.enum(["producao", "homologacao"]).optional(),
     })
     .optional(),
+  /**
+   * **v1.2 (2026-09-25) — COMANDA do SIAC.** Número do pedido (`VenNro`, o `numeroPedido`
+   * do GeraVenda) que o balcão bipa na conferência do SIAC. O agente ≥ v1.5 imprime como
+   * CODE128 DEPOIS do DANFE (fora do bloco regulado); agente anterior ignora o campo.
+   * Montado no servidor a partir da venda — nunca vem do cliente.
+   */
+  comanda: z.object({ numero: z.string().regex(/^\d{1,10}$/) }).optional(),
 });
 
 export type ReceiptDto = z.infer<typeof ReceiptDto>;

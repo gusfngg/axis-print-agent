@@ -115,6 +115,21 @@ describe("buildReceiptOps — DANFE NFC-e", () => {
     expect(ops.slice(i + 1, i + 3)).toEqual([{ op: "size", v: "normal" }, { op: "bold", v: false }]);
   });
 
+  it("comanda do SIAC (v1.2): CODE128 do numero do pedido DEPOIS do rodape, antes do corte", () => {
+    const ops = buildReceiptOps({ ...base, footerMessage: "AUTOATENDIMENTO", fiscal, comanda: { numero: "2529103" } });
+    const iRodape = ops.findIndex((o) => o.op === "text" && o.v === "AUTOATENDIMENTO");
+    const iBarra = ops.findIndex((o) => o.op === "barcode");
+    expect(ops[iBarra]).toEqual({ op: "barcode", v: "2529103" });
+    expect(iBarra).toBeGreaterThan(iRodape);
+    expect(iBarra).toBeGreaterThan(ops.findIndex((o) => o.op === "qrcode"));
+    expect(texts(ops)).toContain("Pedido 2529103");
+    expect(ops[ops.length - 1]!.op).toBe("cut");
+  });
+
+  it("sem comanda nao imprime codigo de barras (Axis antigo / venda sem pedido)", () => {
+    expect(danfe().some((o) => o.op === "barcode")).toBe(false);
+  });
+
   it("mantem 2a via e corte", () => {
     const ops = buildReceiptOps({ ...base, reprint: true, fiscal });
     expect(texts(ops)).toContain("2a VIA");

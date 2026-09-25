@@ -16,6 +16,7 @@ export type ReceiptOp =
    * a assinatura que a SEFAZ confere na leitura.
    */
   | { op: "qrcode"; v: string }
+  | { op: "barcode"; v: string }
   | { op: "cut" };
 
 const PAYMENT_LABELS: Record<ReceiptDto["payment"]["method"], string> = {
@@ -152,6 +153,14 @@ function buildDanfeOps(dto: ReceiptDto, fiscal: NonNullable<ReceiptDto["fiscal"]
     ops.push({ op: "newline" }, { op: "bold", v: true }, { op: "size", v: "quad" });
     text(dto.footerMessage);
     ops.push({ op: "size", v: "normal" }, { op: "bold", v: false });
+  }
+  // Comanda do SIAC (v1.2): o número do pedido em CODE128 que o balcão bipa na
+  // conferência. DEPOIS do DANFE e do rodapé — fora do bloco regulado da NFC-e.
+  if (dto.comanda) {
+    ops.push({ op: "newline" }, { op: "line" }, { op: "align", v: "center" });
+    text("COMANDA - CONFERENCIA NO BALCAO");
+    ops.push({ op: "barcode", v: dto.comanda.numero });
+    text(`Pedido ${dto.comanda.numero}`);
   }
   ops.push({ op: "newline" }, { op: "cut" });
   return ops;

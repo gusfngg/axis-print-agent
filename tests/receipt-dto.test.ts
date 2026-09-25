@@ -44,3 +44,18 @@ describe("ReceiptDto (contrato com o Axis)", () => {
     expect(PrintRequest.safeParse(valid).success).toBe(false);
   });
 });
+
+describe("ReceiptDto v1.2 — comanda do SIAC", () => {
+  const base = {
+    saleNumber: "VEN-00288", createdAt: "2026-09-25T14:11:00.000Z",
+    branch: { name: "Loja", address: "", city: "", state: "SP", phone: "" },
+    items: [{ description: "Item", quantity: 1, unitPrice: 1, subtotal: 1 }],
+    subtotal: 1, discount: 0, total: 1, payment: { method: "CARTAO_CREDITO" }, footerMessage: "", reprint: false,
+  };
+  it("aceita só dígitos (1–10) no número do pedido", () => {
+    expect(ReceiptDto.safeParse({ ...base, comanda: { numero: "2529103" } }).success).toBe(true);
+    for (const numero of ["", "25291O3", "12345678901", "2529 103"]) {
+      expect(ReceiptDto.safeParse({ ...base, comanda: { numero } }).success).toBe(false);
+    }
+  });
+});

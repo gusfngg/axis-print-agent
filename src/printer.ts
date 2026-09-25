@@ -35,6 +35,9 @@ function applyOp(p: ThermalPrinter, op: ReceiptOp): void {
     // `cellSize: 6` cabe a URL da NFC-e (~200 chars) em 80mm ainda legivel por
     // celular; `correction: "M"` e o nivel recomendado pro DANFE.
     case "qrcode": p.printQR(op.v, { cellSize: 6, correction: "M", model: 2 }); break;
+    // Comanda do SIAC: CODE128 do número do pedido (7-10 dígitos cabem folgados em
+    // 80mm com barra LARGE); texto legível abaixo das barras (HRI) pro atendente.
+    case "barcode": p.code128(op.v, { width: "LARGE", height: 80, text: 3 }); break;
     case "cut": p.cut(); break;
   }
 }
