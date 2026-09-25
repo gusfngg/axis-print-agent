@@ -159,6 +159,11 @@ function buildDanfeOps(dto: ReceiptDto, fiscal: NonNullable<ReceiptDto["fiscal"]
   if (dto.comanda) {
     ops.push({ op: "newline" }, { op: "line" }, { op: "align", v: "center" });
     text("COMANDA - CONFERENCIA NO BALCAO");
+    // Regra da loja (2026-09-25): TODO item passa na conferencia, inclusive o que o
+    // cliente pegou sozinho na prateleira. ASCII puro (PC860) e <= 42 colunas.
+    ops.push({ op: "bold", v: true });
+    text("TODOS OS ITENS PASSAM NA CONFERENCIA");
+    ops.push({ op: "bold", v: false });
     ops.push({ op: "barcode", v: dto.comanda.numero });
     text(`Pedido ${dto.comanda.numero}`);
   }

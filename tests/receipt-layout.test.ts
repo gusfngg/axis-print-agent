@@ -123,6 +123,7 @@ describe("buildReceiptOps — DANFE NFC-e", () => {
     expect(iBarra).toBeGreaterThan(iRodape);
     expect(iBarra).toBeGreaterThan(ops.findIndex((o) => o.op === "qrcode"));
     expect(texts(ops)).toContain("Pedido 2529103");
+    expect(texts(ops)).toContain("TODOS OS ITENS PASSAM NA CONFERENCIA");
     expect(ops[ops.length - 1]!.op).toBe("cut");
   });
 
