@@ -5,6 +5,7 @@ import { pickPrinterName } from "./printer-select";
 import type { ReceiptDto, TicketDto } from "./receipt-dto";
 import { buildReceiptOps, type ReceiptOp } from "./receipt-layout";
 import { buildTicketOps } from "./ticket-layout";
+import { buildTicketRaster } from "./ticket-raster";
 import { logger } from "./logger";
 
 // Lazy-require do nativo: importar este arquivo NÃO deve carregar o binário.
@@ -110,7 +111,17 @@ export class NodeThermalPrinterDriver implements PrinterDriver {
 
   async printTicket(dto: TicketDto): Promise<void> {
     const p = this.make();
-    for (const op of buildTicketOps(dto)) applyOp(p, op);
+    // Cupom em imagem (logo + fonte do site). Sem glifo pra algum caractere ou largo demais,
+    // volta ao cupom de texto de antes.
+    const raster = buildTicketRaster(dto);
+    if (raster) {
+      p.append(raster);
+      p.newLine();
+      p.newLine();
+      p.cut();
+    } else {
+      for (const op of buildTicketOps(dto)) applyOp(p, op);
+    }
     await p.execute({ docname: `Axis senha ${dto.number}` });
   }
 }

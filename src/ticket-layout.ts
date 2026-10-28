@@ -7,7 +7,7 @@ import { sanitizeText } from "./sanitize";
  * decide nada: `formatToParts` porque o `format` do pt-BR insere ", " entre
  * data e hora.
  */
-function dateTimeSP(iso: string): string {
+export function dateTimeSP(iso: string): string {
   const parts = new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
     day: "2-digit",
